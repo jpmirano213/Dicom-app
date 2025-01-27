@@ -1,0 +1,61 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual Environment
+venv/
+env/
+
+# VS Code and IDE settings
+.vscode/
+.idea/
+
+# MacOS-specific files
+.DS_Store
+
+# Python logs
+*.log
+*.out
+*.err
+
+# pytest
+.cache/
+
+# Migrations
+alembic/versions/*.pyc
+alembic/versions/*.py
+
+# Database files
+*.sqlite3
+*.db
+*.sql
+*.sql.gz
+
+# Environment variables
+.env
+
+# Docker-related files
+*.pid
+db_data/
+
+# Build and distribution artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Compiled static files
+staticfiles/
+
+# Node.js (for frontend if applicable)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker Compose override files (local setups)
+docker-compose.override.yml

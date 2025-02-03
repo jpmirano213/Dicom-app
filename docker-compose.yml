@@ -22,10 +22,11 @@ services:
       - "3001:3001"
     environment:
       - NODE_ENV=production
-      - DB_HOST=db
+      - DB_HOST=dicom-db
       - DB_USER=dicomuser
       - DB_PASSWORD=dicompassword
       - DB_NAME=dicomdb
+      - DB_PORT=3306 
       - PORT=3001
     volumes:
       - ./backend:/app

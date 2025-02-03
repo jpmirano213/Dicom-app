@@ -4,22 +4,13 @@ FROM node:18
 # Set working directory
 WORKDIR /app
 
-# ✅ Ensure Python, pip, and venv are installed
+# ✅ Install system-wide Python packages using apt
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    python3 python3-pip python3-venv && \
+    python3 python3-pip python3-numpy python3-pydicom && \
     rm -rf /var/lib/apt/lists/*
 
 # ✅ Check if Python is correctly installed
 RUN python3 --version && pip3 --version
-
-# ✅ Force virtual environment creation inside the container
-RUN python3 -m venv /app/venv && ls -l /app/venv/bin/
-
-# ✅ Install Python dependencies inside the virtual environment
-RUN /app/venv/bin/python3 -m pip install --upgrade pip numpy pydicom
-
-# ✅ Ensure venv is used in the container
-ENV PATH="/app/venv/bin:$PATH"
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
@@ -31,5 +22,5 @@ COPY . .
 # Expose backend port
 EXPOSE 3001
 
-# ✅ Start backend server with venv activated
-CMD ["/bin/bash", "-c", "source /app/venv/bin/activate && npm start"]
+# ✅ Start backend server
+CMD ["npm", "start"]

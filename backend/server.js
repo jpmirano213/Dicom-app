@@ -36,7 +36,7 @@ app.post("/upload", upload.single("dicomFile"), async (req, res) => {
         console.log(`🟢 Uploaded File Path: ${filePath}`);
 
         const pythonScript = path.join(__dirname, "process_dicom.py");
-        const pythonExecutable = "/app/venv/bin/python3"; // ✅ Use Python inside the virtual environment
+        const pythonExecutable = "python3"; // ✅ Use system-installed Python
         const logFile = path.join(__dirname, "dicom_processing.log"); // ✅ Store logs for debugging
 
         execFile(pythonExecutable, [pythonScript, filePath], { maxBuffer: 50 * 1024 * 1024 }, async (error, stdout, stderr) => {
@@ -165,7 +165,6 @@ app.get("/files/:filename", async (req, res) => {
         res.status(500).json({ error: "File download failed" });
     }
 });
-
 
 // ✅ GraphQL API Endpoint
 app.use(

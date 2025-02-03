@@ -147,7 +147,14 @@ app.get("/files/:filename", async (req, res) => {
             return res.status(404).json({ error: "File not found" });
         }
 
-        res.download(filePath, filename, (err) => {
+        // ✅ Set correct MIME type for DICOM files
+        res.setHeader("Content-Type", "application/dicom");
+
+        // ✅ Ensure filename includes `.dcm` extension when downloading
+        const downloadFilename = filename.endsWith(".dcm") ? filename : `${filename}.dcm`;
+        res.setHeader("Content-Disposition", `attachment; filename="${downloadFilename}"`);
+
+        res.download(filePath, downloadFilename, (err) => {
             if (err) {
                 console.error(`❌ Error sending file: ${filename}`, err);
                 res.status(500).json({ error: "Failed to download file" });
@@ -158,6 +165,7 @@ app.get("/files/:filename", async (req, res) => {
         res.status(500).json({ error: "File download failed" });
     }
 });
+
 
 // ✅ GraphQL API Endpoint
 app.use(

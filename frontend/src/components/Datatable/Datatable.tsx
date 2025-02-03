@@ -83,24 +83,27 @@ const DataTable: React.FC = () => {
   );
 
   // ✅ Handle File Download
-  const handleDownload = async (filePath: string | null) => {
-    if (!filePath) return; // ✅ Prevents calling API with null filepath
-
+  const handleDownload = async (filePath: string) => {
     try {
-      const response = await axios.get(`http://localhost:3001/files/${filePath}`, {
-        responseType: "blob",
-      });
+        const response = await axios.get(`http://localhost:3001/files/${filePath}`, {
+            responseType: "blob",
+        });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", filePath.split("/").pop() || "file.dcm");
-      document.body.appendChild(link);
-      link.click();
+        const fileExtension = filePath.endsWith(".dcm") ? "" : ".dcm"; // ✅ Ensure correct extension
+        const filename = filePath.split("/").pop() + fileExtension;
+
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/dicom" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     } catch (err) {
-      console.error("Download failed:", err);
+        console.error("Download failed:", err);
     }
-  };
+};
+
 
   return (
     <Box sx={{ width: "100%" }}>

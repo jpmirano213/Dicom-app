@@ -36,15 +36,25 @@ app.post("/upload", upload.single("dicomFile"), async (req, res) => {
         console.log(`🟢 Uploaded File Path: ${filePath}`);
 
         const pythonScript = path.join(__dirname, "process_dicom.py");
+        const pythonExecutable = "/app/venv/bin/python3"; // ✅ Use Python inside the virtual environment
+        const logFile = path.join(__dirname, "dicom_processing.log"); // ✅ Store logs for debugging
 
-        execFile("python3", [pythonScript, filePath], { maxBuffer: 50 * 1024 * 1024 }, async (error, stdout, stderr) => {
+        execFile(pythonExecutable, [pythonScript, filePath], { maxBuffer: 50 * 1024 * 1024 }, async (error, stdout, stderr) => {
+            // ✅ Log execution result for debugging
+            fs.appendFileSync(logFile, `\n[${new Date().toISOString()}] Processing: ${filePath}\n`);
+
             if (error) {
                 console.error("❌ Python script execution error:", error.message);
                 console.error("🔴 STDERR:", stderr);
+                fs.appendFileSync(logFile, `❌ ERROR: ${error.message}\n🔴 STDERR: ${stderr}\n`);
                 return res.status(500).json({ error: "Failed to process DICOM file", details: stderr });
             }
 
             try {
+                // ✅ Store raw Python output for debugging
+                fs.appendFileSync(logFile, `✅ STDOUT: ${stdout}\n`);
+
+                // ✅ Parse JSON output
                 const dicomData = JSON.parse(stdout);
                 console.log("✅ Extracted DICOM Data:", dicomData);
 

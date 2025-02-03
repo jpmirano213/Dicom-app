@@ -1,4 +1,20 @@
 services:
+  frontend:
+    build: ./frontend
+    container_name: dicom-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://backend:3001/graphql
+      - PORT=5173
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    command: ["npm", "run", "dev"]
+
   backend:
     build: ./backend
     container_name: dicom-backend
@@ -6,24 +22,18 @@ services:
       - "3001:3001"
     environment:
       - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=dicomuser
+      - DB_PASSWORD=dicompassword
+      - DB_NAME=dicomdb
+      - PORT=3001
     volumes:
       - ./backend:/app
       - /app/node_modules
     depends_on:
-      - db
-
-  frontend:
-    build: ./frontend
-    container_name: dicom-frontend
-    ports:
-      - "5173:5173"
-    environment:
-      - NODE_ENV=production
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    depends_on:
-      - backend
+      db:
+        condition: service_healthy
+    command: ["node", "server.js"]
 
   db:
     image: mysql:8
@@ -38,6 +48,11 @@ services:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+      start_period: 20s
 
 volumes:
   db_data:

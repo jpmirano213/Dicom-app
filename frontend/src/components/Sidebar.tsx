@@ -1,20 +1,24 @@
 import React from "react";
 import { Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Tooltip } from "@mui/material";
-import { ViewInAr, Dashboard, FileUpload, OpenInFull, Window } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom"; // Import useLocation
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import FileUploadIcon from "@mui/icons-material/FileUpload";
+import ViewInArIcon from "@mui/icons-material/ViewInAr";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import WindowIcon from "@mui/icons-material/Window";
+
 
 interface SidebarProps {
   open: boolean;
 }
 
 const menuItems = [
-  { text: "Dashboard", icon: <Dashboard />, path: "/" },
-  { text: "Upload", icon: <FileUpload />, path: "/upload" },
-  { text: "AR View", icon: <ViewInAr />, path: "/contact" },
-  { text: "View", icon: <OpenInFull />, path: "/view" },
-  { text: "Grid", icon: <Window />, path: "/grid" }
+  { text: "Dashboard", icon: <DashboardIcon />, path: "/" },
+  { text: "Upload", icon: <FileUploadIcon />, path: "/upload" },
+  { text: "AR View", icon: <ViewInArIcon />, path: "/contact" },
+  { text: "View", icon: <OpenInFullIcon />, path: "/view" },
+  { text: "Grid", icon: <WindowIcon />, path: "/grid" }
 ];
-
 const Sidebar: React.FC<SidebarProps> = ({ open }) => {
   const location = useLocation(); // Get current path
 

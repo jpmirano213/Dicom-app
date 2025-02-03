@@ -1,18 +1,28 @@
-# Use official Node.js image
+# Use official Node.js image with Python installed
 FROM node:18
 
-# Set working directory inside container
+# Set working directory
 WORKDIR /app
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
 RUN npm install
 
-# Copy the rest of the app
+# ✅ Install Python, pip, and venv inside the container
+RUN apt-get update && apt-get install -y python3 python3-pip python3-venv && \
+    python3 -m venv /app/venv && \
+    /app/venv/bin/python -m pip install --upgrade pip && \
+    /app/venv/bin/python -m pip install numpy pydicom
+
+# ✅ Ensure the virtual environment is always used
+ENV PATH="/app/venv/bin:$PATH"
+ENV PYTHONPATH="/app/venv/lib/python3.11/site-packages"
+
+# Copy backend source code
 COPY . .
 
-# Expose the backend port
+# Expose backend port
 EXPOSE 3001
 
-# Start the server
-CMD ["node", "server.js"]
+# Start backend server
+CMD ["npm", "start"]

@@ -1,5 +1,22 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("./db");
+require("dotenv").config(); // ✅ Ensure dotenv is loaded at the top
+
+const { Sequelize, DataTypes } = require("sequelize");
+
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST,
+    dialect: "mysql",
+    port: 3306,
+    logging: false,
+  }
+);
+
+sequelize.authenticate()
+  .then(() => console.log("🟢 Connected to MySQL Database"))
+  .catch(err => console.error("🔴 Database Connection Error:", err));
 
 // ✅ Patient Model (Updated birthdate to STRING)
 const Patient = sequelize.define("patients", {

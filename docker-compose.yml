@@ -45,7 +45,7 @@ services:
       MYSQL_USER: dicomuser
       MYSQL_PASSWORD: dicompassword
     ports:
-      - "3306:3306"
+      - "3310:3310"
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:

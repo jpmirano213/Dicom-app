@@ -1,22 +1,29 @@
-# Use official Node.js image with Python installed
+# Use official Node.js image
 FROM node:18
 
 # Set working directory
 WORKDIR /app
 
+# ✅ Ensure Python, pip, and venv are installed
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv && \
+    rm -rf /var/lib/apt/lists/*
+
+# ✅ Check if Python is correctly installed
+RUN python3 --version && pip3 --version
+
+# ✅ Force virtual environment creation inside the container
+RUN python3 -m venv /app/venv && ls -l /app/venv/bin/
+
+# ✅ Install Python dependencies inside the virtual environment
+RUN /app/venv/bin/python3 -m pip install --upgrade pip numpy pydicom
+
+# ✅ Ensure venv is used in the container
+ENV PATH="/app/venv/bin:$PATH"
+
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
 RUN npm install
-
-# ✅ Install Python, pip, and venv inside the container
-RUN apt-get update && apt-get install -y python3 python3-pip python3-venv && \
-    python3 -m venv /app/venv && \
-    /app/venv/bin/python -m pip install --upgrade pip && \
-    /app/venv/bin/python -m pip install numpy pydicom
-
-# ✅ Ensure the virtual environment is always used
-ENV PATH="/app/venv/bin:$PATH"
-ENV PYTHONPATH="/app/venv/lib/python3.11/site-packages"
 
 # Copy backend source code
 COPY . .
@@ -24,5 +31,5 @@ COPY . .
 # Expose backend port
 EXPOSE 3001
 
-# Start backend server
-CMD ["npm", "start"]
+# ✅ Start backend server with venv activated
+CMD ["/bin/bash", "-c", "source /app/venv/bin/activate && npm start"]

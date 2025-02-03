@@ -3,3 +3,14 @@ node_modules
 npm-debug.log
 dist
 uploads
+
+# Ignore Python virtual environment
+backend/venv/
+venv/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore MacOS system files
+.DS_Store

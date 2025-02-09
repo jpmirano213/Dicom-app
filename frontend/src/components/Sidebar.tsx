@@ -15,7 +15,7 @@ interface SidebarProps {
 const menuItems = [
   { text: "Dashboard", icon: <DashboardIcon />, path: "/" },
   { text: "Upload", icon: <FileUploadIcon />, path: "/upload" },
-  { text: "AR View", icon: <ViewInArIcon />, path: "/contact" },
+  { text: "AR View", icon: <ViewInArIcon />, path: "/arview" },
   { text: "View", icon: <OpenInFullIcon />, path: "/view" },
   { text: "Grid", icon: <WindowIcon />, path: "/grid" }
 ];

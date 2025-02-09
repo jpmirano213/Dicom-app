@@ -4,13 +4,13 @@ FROM node:18
 # Set working directory
 WORKDIR /app
 
-# ✅ Install system-wide Python packages using apt
+# ✅ Install required system dependencies (Python, netcat, etc.)
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    python3 python3-pip python3-numpy python3-pydicom && \
+    python3 python3-pip python3-numpy python3-pydicom netcat-traditional && \
     rm -rf /var/lib/apt/lists/*
 
-# ✅ Check if Python is correctly installed
-RUN python3 --version && pip3 --version
+# ✅ Check if Python and netcat are correctly installed
+RUN python3 --version && pip3 --version && nc -h
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
@@ -19,8 +19,11 @@ RUN npm install
 # Copy backend source code
 COPY . .
 
+# Make sure wait-for-it.sh is executable
+RUN chmod +x ./wait-for-it.sh
+
 # Expose backend port
 EXPOSE 3001
 
-# ✅ Start backend server
-CMD ["npm", "start"]
+# ✅ Start backend server with wait-for-it.sh
+CMD ["sh", "-c", "./wait-for-it.sh dicom-db 3306 -- npm start"]

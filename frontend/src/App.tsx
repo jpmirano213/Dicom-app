@@ -3,9 +3,7 @@ import Layout from "./components/Layout";
 import DataTable from "./components/Datatable/Datatable";
 import FileUpload from "./components/FileUpload/FileUpload";
 import FileViewer from "./components/FileViewer/FileViewer";
-// import About from "./pages/About";
-// import Contact from "./pages/Contact";
-// import Settings from "./pages/Settings";
+import UnderConstruction from "./components/Common/UnderConstruction";
 
 const App = () => {
   return (
@@ -15,9 +13,8 @@ const App = () => {
           <Route index element={<DataTable />} />
           <Route path="upload" element={<FileUpload />} />
           <Route path="view" element={<FileViewer />} />
-          {/* <Route path="about" element={<About />} />
-          <Route path="contact" element={<Contact />} />
-          <Route path="settings" element={<Settings />} /> */}
+          <Route path="arview" element={<UnderConstruction />} />
+          <Route path="grid" element={<UnderConstruction />} />
         </Route>
       </Routes>
     </Router>

@@ -107,6 +107,39 @@ const root = {
 
     return await File.create({ seriesid, studyid, patientid, filepath });
   },
+
+  getFilesWithDetails: async () => {
+    const files = await File.findAll({
+      include: [
+        {
+          model: Patient,
+          attributes: ["name", "birthdate"],
+        },
+        {
+          model: Series,
+          attributes: ["seriesdescription"],
+        },
+      ],
+      attributes: ["fileid", "filepath", "filename"],
+      raw: true, // ✅ Flatten the result
+    });
+  
+    if (!Array.isArray(files)) {
+      console.error("❌ Expected an array, but got:", files);
+      return [];
+    }
+  
+    return files.map(file => ({
+      fileid: file.fileid,
+      filepath: file.filepath,
+      filename: file.filename,
+      patientName: file["patient.name"] || "Unknown Patient", // ✅ Handle missing data
+      birthdate: file["patient.birthdate"] || "Unknown Date",
+      seriesName: file["series.seriesdescription"] || "Unknown Series",
+    }));
+  }
+  
+  
 };
 
 module.exports = root;

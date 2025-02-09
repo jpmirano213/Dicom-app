@@ -56,6 +56,19 @@ const schema = buildSchema(`
     getFiles(seriesid: Int!): [File]
   }
 
+  type FileWithDetails {
+    fileid: Int
+    filepath: String
+    filename: String
+    patientName: String
+    birthdate: String
+    seriesName: String
+  }
+
+  extend type Query {
+    getFilesWithDetails: [FileWithDetails]
+  }
+
   type Mutation {
     createPatient(name: String!, birthdate: String!): Patient
     createStudy(patientid: Int!, studyname: String!): Study

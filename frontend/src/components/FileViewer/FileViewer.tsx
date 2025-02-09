@@ -4,7 +4,16 @@ import * as cornerstone from "cornerstone-core";
 import * as cornerstoneWADOImageLoader from "cornerstone-wado-image-loader";
 import cornerstoneMath from "cornerstone-math";
 import * as dicomParser from "dicom-parser";
-import { Box, Typography, Select, MenuItem, CircularProgress } from "@mui/material";
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  Paper
+} from "@mui/material";
 
 // ✅ Assign external dependencies to `cornerstoneWADOImageLoader`
 (cornerstoneWADOImageLoader as any).external.cornerstone = cornerstone;
@@ -12,76 +21,89 @@ import { Box, Typography, Select, MenuItem, CircularProgress } from "@mui/materi
 (cornerstoneWADOImageLoader as any).external.cornerstoneMath = cornerstoneMath;
 
 const FileViewer: React.FC = () => {
-  const [series, setSeries] = useState<{ seriesid: number; seriesdescription: string }[]>([]);
-  const [selectedSeries, setSelectedSeries] = useState<number | null>(null);
-  const [files, setFiles] = useState<{ fileid: number; filepath: string }[]>([]);
+  const [files, setFiles] = useState<
+    { fileid: number; filepath: string; filename: string; patientName: string; birthdate: string; seriesName: string }[]
+  >([]);
+  const [thumbnails, setThumbnails] = useState<{ [key: string]: string | null }>({});
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const dicomViewerRef = useRef<HTMLDivElement | null>(null);
-  const [viewerSize, setViewerSize] = useState<number>(512); // Default size
+  const [viewerSize, setViewerSize] = useState<number>(512);
 
   // ✅ Handle resizing dynamically
   useEffect(() => {
     const updateSize = () => {
-      const width = window.innerWidth * 0.8; // Make the viewer 80% of screen width
+      const width = window.innerWidth * 0.7; // Make the viewer 70% of screen width
       const size = Math.max(300, Math.min(width, 800)); // Clamp between 300px and 800px
       setViewerSize(size);
     };
 
-    updateSize(); // Initial size
+    updateSize();
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
+  // ✅ Fetch all files
   useEffect(() => {
-    const fetchSeries = async () => {
-      try {
-        const response = await axios.post("http://localhost:3001/graphql", {
-          query: `
-            {
-              getSeries {
-                seriesid
-                seriesdescription
-              }
-            }
-          `,
-        });
-
-        setSeries(response.data.data.getSeries);
-      } catch (error) {
-        console.error("Error fetching series:", error);
-      }
-    };
-
-    fetchSeries();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedSeries) return;
-
     const fetchFiles = async () => {
       try {
         const response = await axios.post("http://localhost:3001/graphql", {
           query: `
-            query GetFiles($seriesid: Int!) {
-              getFiles(seriesid: $seriesid) {
+            {
+              getFilesWithDetails {
                 fileid
                 filepath
+                filename
+                patientName
+                birthdate
+                seriesName
               }
             }
           `,
-          variables: { seriesid: selectedSeries },
         });
 
-        setFiles(response.data.data.getFiles);
+        setFiles(response.data.data.getFilesWithDetails);
       } catch (error) {
         console.error("Error fetching files:", error);
       }
     };
 
     fetchFiles();
-  }, [selectedSeries]);
+  }, []);
 
+  // ✅ Generate thumbnails for each DICOM file
+  useEffect(() => {
+    const generateThumbnails = async () => {
+      const newThumbnails: { [key: string]: string | null } = {};
+
+      for (const file of files) {
+        try {
+          const imageId = `wadouri:http://localhost:3001/files/${file.filepath}`;
+          const image = await cornerstone.loadImage(imageId);
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+
+          if (context) {
+            canvas.width = 128;
+            canvas.height = 128;
+            cornerstone.renderToCanvas(canvas, image);
+            newThumbnails[file.filepath] = canvas.toDataURL();
+          }
+        } catch (error) {
+          console.error(`Error generating thumbnail for ${file.filename}:`, error);
+          newThumbnails[file.filepath] = null;
+        }
+      }
+
+      setThumbnails(newThumbnails);
+    };
+
+    if (files.length > 0) {
+      generateThumbnails();
+    }
+  }, [files]);
+
+  // ✅ Load the selected DICOM image
   const loadDicomImage = async (filePath: string) => {
     try {
       setLoading(true);
@@ -103,54 +125,69 @@ const FileViewer: React.FC = () => {
   };
 
   return (
-    <Box sx={{ textAlign: "center", p: 3 }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        DICOM File Viewer
-      </Typography>
-
-      <Select
-        value={selectedSeries || ""}
-        onChange={(e) => setSelectedSeries(Number(e.target.value))}
-        displayEmpty
-        sx={{ mb: 2 }}
-      >
-        <MenuItem value="" disabled>Select a Series</MenuItem>
-        {series.map((s) => (
-          <MenuItem key={s.seriesid} value={s.seriesid}>
-            {s.seriesdescription || `Series ${s.seriesid}`}
-          </MenuItem>
-        ))}
-      </Select>
-
-      {selectedSeries && (
-        <Select
-          value={selectedFile || ""}
-          onChange={(e) => loadDicomImage(e.target.value)}
-          displayEmpty
-          sx={{ mb: 2 }}
-        >
-          <MenuItem value="" disabled>Select a DICOM file</MenuItem>
+    <Box sx={{ display: "flex", height: "100vh" }}>
+      {/* Sidebar - List of Files with Thumbnails */}
+      <Paper elevation={3} sx={{ width: "25%", p: 2, overflowY: "auto" }}>
+        <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
+          DICOM Files
+        </Typography>
+        <List>
           {files.map((file) => (
-            <MenuItem key={file.fileid} value={file.filepath}>
-              {file.filepath}
-            </MenuItem>
+            <React.Fragment key={file.fileid}>
+              <ListItem button onClick={() => loadDicomImage(file.filepath)} sx={{ display: "flex", alignItems: "center" }}>
+                {/* Thumbnail */}
+                <Box
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    mr: 2,
+                    border: "1px solid gray",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#ddd",
+                  }}
+                >
+                  {thumbnails[file.filepath] ? (
+                    <img src={thumbnails[file.filepath]!} alt="Thumbnail" width="64" height="64" />
+                  ) : (
+                    <Typography variant="body2">No Image</Typography>
+                  )}
+                </Box>
+
+                {/* File Info */}
+                <ListItemText
+                  primary={file.filename}
+                  secondary={`Patient: ${file.patientName} • ${file.birthdate} • ${file.seriesName}`}
+                />
+              </ListItem>
+              <Divider />
+            </React.Fragment>
           ))}
-        </Select>
-      )}
+        </List>
+      </Paper>
 
-      {/* ✅ Responsive Viewer Box */}
+      {/* DICOM Viewer */}
       <Box
-        ref={dicomViewerRef}
         sx={{
-          width: viewerSize,
-          height: viewerSize,
-          margin: "auto",
-          border: "2px solid black",
-          background: "black",
+          flexGrow: 1,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          p: 2,
         }}
-      />
-
-      {loading && <CircularProgress sx={{ mt: 2 }} />}
+      >
+        <Box
+          ref={dicomViewerRef}
+          sx={{
+            width: viewerSize,
+            height: viewerSize,
+            border: "2px solid black",
+            background: "black",
+          }}
+        />
+        {loading && <CircularProgress sx={{ position: "absolute", top: "50%", left: "50%" }} />}
+      </Box>
     </Box>
   );
 };

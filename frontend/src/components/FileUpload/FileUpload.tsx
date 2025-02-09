@@ -1,13 +1,14 @@
 import React, { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
-import { Box, Button, Typography, Modal, Paper } from "@mui/material";
+import { Box, Button, Typography, Modal, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
 
 const FileUpload: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; size: number; uploadedAt: string }[]>([]);
 
   // ✅ Drag & Drop Handler
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -32,6 +33,16 @@ const FileUpload: React.FC = () => {
       console.log("✅ Upload Response:", response.data);
       setModalMessage("File uploaded successfully!");
       setModalOpen(true);
+
+      // ✅ Add file to uploaded list
+      setUploadedFiles(prevFiles => [
+        ...prevFiles,
+        {
+          name: file.name,
+          size: file.size,
+          uploadedAt: new Date().toLocaleString(),
+        },
+      ]);
     } catch (err) {
       console.error("❌ Upload Failed:", err);
       setModalMessage("Failed to upload file.");
@@ -65,6 +76,30 @@ const FileUpload: React.FC = () => {
           {uploading ? "Uploading..." : "Browse File"}
         </Button>
       </Box>
+
+      {/* ✅ Uploaded Files Table */}
+      {uploadedFiles.length > 0 && (
+        <TableContainer component={Paper} sx={{ mt: 3 }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>File Name</TableCell>
+                <TableCell>Size (KB)</TableCell>
+                <TableCell>Uploaded At</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {uploadedFiles.map((file, index) => (
+                <TableRow key={index}>
+                  <TableCell>{file.name}</TableCell>
+                  <TableCell>{(file.size / 1024).toFixed(2)}</TableCell>
+                  <TableCell>{file.uploadedAt}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {/* ✅ Modal Popup */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)}>

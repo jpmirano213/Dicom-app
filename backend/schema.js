@@ -43,7 +43,8 @@ const schema = buildSchema(`
     seriesid: Int
     patientid: Int
     studyid: Int
-    filepath: String
+    filename: String    # ✅ NEW: Stores the original file name
+    filepath: String    # ✅ Stores the hashed/multer filename
     date_created: String
   }
 
@@ -60,7 +61,7 @@ const schema = buildSchema(`
     createStudy(patientid: Int!, studyname: String!): Study
     createModality(name: String!): Modality
     createSeries(studyid: Int!, patientid: Int!, modalityid: Int, seriesname: String!, seriesdescription: String): Series
-    uploadFile(seriesid: Int!, studyid: Int!, patientid: Int!, filepath: String!): File
+    uploadFile(seriesid: Int!, studyid: Int!, patientid: Int!, filename: String!, filepath: String!): File  # ✅ UPDATED
   }
 `);
 

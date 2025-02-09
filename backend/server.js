@@ -33,32 +33,33 @@ const upload = multer({ dest: "uploads/" });
 app.post("/upload", upload.single("dicomFile"), async (req, res) => {
     try {
         const filePath = req.file.path;
+        const originalFileName = req.file.originalname; // ✅ Get original filename
+
         console.log(`🟢 Uploaded File Path: ${filePath}`);
+        console.log(`🟢 Original File Name: ${originalFileName}`);
 
         const pythonScript = path.join(__dirname, "process_dicom.py");
-        const pythonExecutable = "python3"; // ✅ Use system-installed Python
-        const logFile = path.join(__dirname, "dicom_processing.log"); // ✅ Store logs for debugging
 
-        execFile(pythonExecutable, [pythonScript, filePath], { maxBuffer: 50 * 1024 * 1024 }, async (error, stdout, stderr) => {
-            // ✅ Log execution result for debugging
-            fs.appendFileSync(logFile, `\n[${new Date().toISOString()}] Processing: ${filePath}\n`);
-
+        execFile("python3", [pythonScript, filePath], { maxBuffer: 50 * 1024 * 1024 }, async (error, stdout, stderr) => {
             if (error) {
                 console.error("❌ Python script execution error:", error.message);
                 console.error("🔴 STDERR:", stderr);
-                fs.appendFileSync(logFile, `❌ ERROR: ${error.message}\n🔴 STDERR: ${stderr}\n`);
                 return res.status(500).json({ error: "Failed to process DICOM file", details: stderr });
             }
 
             try {
-                // ✅ Store raw Python output for debugging
-                fs.appendFileSync(logFile, `✅ STDOUT: ${stdout}\n`);
+                // ✅ Ensure the output is properly trimmed before parsing
+                const cleanedOutput = stdout.trim();
 
-                // ✅ Parse JSON output
-                const dicomData = JSON.parse(stdout);
+                if (!cleanedOutput) {
+                    throw new Error("DICOM script returned empty output.");
+                }
+
+                const dicomData = JSON.parse(cleanedOutput);
+
                 console.log("✅ Extracted DICOM Data:", dicomData);
 
-                // ✅ Extract Metadata Safely
+                // ✅ Extract Metadata (Handle missing values)
                 const {
                     width = null,
                     height = null,
@@ -67,16 +68,16 @@ app.post("/upload", upload.single("dicomFile"), async (req, res) => {
                     Modality: modalityName = null,
                     PatientName = null,
                     PatientBirthDate = null,
-                    StudyDate = null,
-                    SeriesDescription = null
-                } = dicomData.metadata || {}; 
+                    StudyName = "",
+                    SeriesDescription = "",
+                    SeriesName = "",
+                } = dicomData.metadata || {};
 
                 if (!width || !height || !modalityName || !PatientName) {
-                    console.error("❌ Missing essential DICOM data!");
-                    return res.status(500).json({ error: "DICOM data incomplete" });
+                    console.error("❌ Missing essential DICOM metadata!");
+                    return res.status(500).json({ error: "DICOM metadata incomplete" });
                 }
 
-                // ✅ Format Birthdate
                 let formattedBirthdate = PatientBirthDate ? PatientBirthDate.replace(/\./g, "-") : null;
 
                 // ✅ Ensure Patient Exists
@@ -89,9 +90,9 @@ app.post("/upload", upload.single("dicomFile"), async (req, res) => {
                 }
 
                 // ✅ Ensure Study Exists
-                let study = await Study.findOne({ where: { patientid: patient.patientid, studyname: StudyDate } });
+                let study = await Study.findOne({ where: { patientid: patient.patientid, studyname: StudyName } });
                 if (!study) {
-                    study = await Study.create({ patientid: patient.patientid, studyname: StudyDate });
+                    study = await Study.create({ patientid: patient.patientid, studyname: StudyName });
                 }
 
                 // ✅ Ensure Modality Exists
@@ -101,21 +102,25 @@ app.post("/upload", upload.single("dicomFile"), async (req, res) => {
                 }
 
                 // ✅ Ensure Series Exists
-                let series = await Series.create({ 
-                    studyid: study.studyid, 
-                    patientid: patient.patientid, 
-                    modalityid: modality.modalityid, 
+                let series = await Series.create({
+                    studyid: study.studyid,
+                    patientid: patient.patientid,
+                    modalityid: modality.modalityid,
+                    seriesname: SeriesName,
                     seriesdescription: SeriesDescription,
-                    width, height, minimum, maximum
+                    width,
+                    height,
+                    minimum,
+                    maximum
                 });
 
-                // ✅ Save File Path (Only store filename, not full path)
-                const filename = path.basename(filePath);
+                // ✅ Save File with Original Name
                 const file = await File.create({
                     seriesid: series.seriesid,
                     studyid: study.studyid,
                     patientid: patient.patientid,
-                    filepath: filename  // ✅ Store only the filename
+                    filepath: path.basename(filePath), 
+                    filename: originalFileName // ✅ Store the original filename
                 });
 
                 return res.status(200).json({
@@ -125,11 +130,12 @@ app.post("/upload", upload.single("dicomFile"), async (req, res) => {
                 });
             } catch (parseError) {
                 console.error("❌ JSON Parsing Error:", parseError.message);
-                return res.status(500).json({ error: "Failed to parse DICOM output" });
+                console.error("🔴 Raw Python Output:", stdout);
+                return res.status(500).json({ error: "Failed to parse DICOM output", parseError });
             }
         });
     } catch (error) {
-        console.error("Upload error:", error);
+        console.error("❌ Upload error:", error);
         res.status(500).json({ error: "File upload failed" });
     }
 });
@@ -137,34 +143,41 @@ app.post("/upload", upload.single("dicomFile"), async (req, res) => {
 /**
  * ✅ File Download Endpoint
  */
+
 app.get("/files/:filename", async (req, res) => {
     try {
         const { filename } = req.params;
-        const filePath = path.join(uploadsDir, filename);
 
-        if (!fs.existsSync(filePath)) {
-            console.error(`❌ File Not Found: ${filename}`);
-            return res.status(404).json({ error: "File not found" });
+        // ✅ Check if file exists in DB
+        const fileRecord = await File.findOne({ where: { filepath: filename } });
+
+        if (!fileRecord) {
+            console.error(`❌ File Not Found in Database: ${filename}`);
+            return res.status(404).json({ error: "File not found in database" });
         }
 
-        // ✅ Set correct MIME type for DICOM files
-        res.setHeader("Content-Type", "application/dicom");
+        // ✅ Construct full file path dynamically
+        const filePath = path.join(uploadsDir, filename); // ✅ Corrected
 
-        // ✅ Ensure filename includes `.dcm` extension when downloading
-        const downloadFilename = filename.endsWith(".dcm") ? filename : `${filename}.dcm`;
-        res.setHeader("Content-Disposition", `attachment; filename="${downloadFilename}"`);
+        if (!fs.existsSync(filePath)) {
+            console.error(`❌ File Not Found on Server: ${filePath}`);
+            return res.status(404).json({ error: "File not found on server" });
+        }
 
-        res.download(filePath, downloadFilename, (err) => {
+        // ✅ Serve file with original filename
+        res.download(filePath, fileRecord.filename, (err) => {
             if (err) {
                 console.error(`❌ Error sending file: ${filename}`, err);
                 res.status(500).json({ error: "Failed to download file" });
             }
         });
+
     } catch (error) {
         console.error("❌ File Download Error:", error);
         res.status(500).json({ error: "File download failed" });
     }
 });
+
 
 // ✅ GraphQL API Endpoint
 app.use(

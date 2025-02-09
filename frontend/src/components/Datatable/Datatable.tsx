@@ -6,9 +6,9 @@ import {
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import axios from "axios";
 import { graphqlFetcher } from "../../utils/graphqlFetcher";
-import { PatientData, FileData } from "../Common/GraphQLTypes"; // ✅ Correctly imported types
+import { PatientData, FileData } from "../Common/GraphQLTypes"; // ✅ Correct imports
 
-// ✅ GraphQL Query
+// ✅ Updated GraphQL Query
 const GET_PATIENTS_QUERY = `
   query {
     getPatients {
@@ -25,6 +25,7 @@ const GET_PATIENTS_QUERY = `
           files {
             fileid
             filepath
+            filename  # ✅ Include the original filename
           }
         }
       }
@@ -48,7 +49,7 @@ const DataTable: React.FC = () => {
 
   const patients: PatientData[] = (data as { getPatients: PatientData[] })?.getPatients || [];
 
-  // ✅ Flatten data while ensuring correct types
+  // ✅ Flattened Data Structure
   const flattenedData = patients.flatMap((patient) =>
     patient.studies.flatMap((study) =>
       study.series.flatMap((series) =>
@@ -58,8 +59,9 @@ const DataTable: React.FC = () => {
               name: patient.name,
               birthdate: patient.birthdate,
               seriesdescription: series.seriesdescription || "N/A",
-              fileid: file.fileid ?? null, // ✅ Ensures `fileid` can be null
-              filepath: file.filepath ?? null, // ✅ Ensures `filepath` can be null
+              fileid: file.fileid ?? null,
+              filepath: file.filepath ?? null,
+              filename: file.filename ?? "Unnamed File", // ✅ Use original filename
             }))
           : [
               {
@@ -67,8 +69,9 @@ const DataTable: React.FC = () => {
                 name: patient.name,
                 birthdate: patient.birthdate,
                 seriesdescription: series.seriesdescription || "N/A",
-                fileid: null as number | null, // ✅ Update type to allow null
-                filepath: null as string | null, // ✅ Update type to allow null
+                fileid: null,
+                filepath: null,
+                filename: "No File Available",
               },
             ]
       )
@@ -77,33 +80,29 @@ const DataTable: React.FC = () => {
 
   // ✅ Filter by search (Patient Name or Series Description)
   const filteredData = flattenedData.filter(
-    (item: any) =>
+    (item) =>
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       item.seriesdescription.toLowerCase().includes(search.toLowerCase())
   );
 
   // ✅ Handle File Download
-  const handleDownload = async (filePath: string) => {
+  const handleDownload = async (file: { filepath: string; filename: string }) => {
     try {
-        const response = await axios.get(`http://localhost:3001/files/${filePath}`, {
-            responseType: "blob",
-        });
+      const response = await axios.get(`http://localhost:3001/files/${file.filepath}`, {
+        responseType: "blob",
+      });
 
-        const fileExtension = filePath.endsWith(".dcm") ? "" : ".dcm"; // ✅ Ensure correct extension
-        const filename = filePath.split("/").pop() + fileExtension;
-
-        const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/dicom" }));
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", filename);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", file.filename || "download.dcm"); // ✅ Use original filename
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (err) {
-        console.error("Download failed:", err);
+      console.error("Download failed:", err);
     }
-};
-
+  };
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -127,17 +126,17 @@ const DataTable: React.FC = () => {
           <TableBody>
             {filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((item, index) => (
               <TableRow key={index}>
-                <TableCell>{(item as any).name}</TableCell>
-                <TableCell>{(item as any).birthdate}</TableCell>
-                <TableCell>{(item as any).seriesdescription}</TableCell>
+                <TableCell>{item.name}</TableCell>
+                <TableCell>{item.birthdate}</TableCell>
+                <TableCell>{item.seriesdescription}</TableCell>
                 <TableCell>
-                  {(item as any).filepath ? (
+                  {item.filepath ? (
                     <Button
                       startIcon={<CloudDownloadIcon />}
-                      onClick={() => handleDownload((item as any).filepath)}
+                      onClick={() => handleDownload(item)}
                       variant="contained"
                     >
-                      Download
+                      {item.filename} {/* ✅ Show original filename */}
                     </Button>
                   ) : (
                     "No File"
